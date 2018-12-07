@@ -1,0 +1,9 @@
+{
+	"table_metadata": "Y",
+	"columns_metadata": "Y",
+	"indexes_metadata": "Y",
+	"privileges_metadata": "Y",
+	"crawling":"Y",
+	"cdc":"Y",
+	"threads": "8"
+}

@@ -1,0 +1,60 @@
+group roll_back_sqls;
+
+requireRollBackCrawlJobInfo() ::= <<
+select  max(crawl_id) as crawl_id from kosh.crawl_xref where crawl_end_ts = TIMESTAMP '9999-12-31 00:00:00'
+>>
+
+RollBackCrawlJobInfo(rollbackjobno) ::= <<	
+Select coalesce(max(crawl_id),-1) as prev_crawl_id, cast (to_char(max(crawl_end_ts), 'YYYY-MM-DD') as date) -1  as etl_date  
+from kosh.crawl_xref where crawl_id < $rollbackjobno.crawl_id$
+>>
+
+delete_query(rollbackjobno)::=<<
+delete from kosh.crawl_xref where crawl_id = $rollbackjobno.crawl_id$
+>>
+
+rollbackTableUpdate(mapgetcrawljobno) ::= <<
+update kosh.table_entity a
+set valid_to_ts = '9999-12-31'
+from  (select table_id as b_table_id , prev_crawl_id   from  kosh.table_entity where crawl_id =  $mapgetcrawljobno.crawl_id$ ) b
+where a.table_id = b_table_id
+and  a.crawl_id =  b.prev_crawl_id;
+
+update kosh.column_metadata a
+set valid_to_ts = '9999-12-31'
+from  (select column_id,  table_id as b_table_id , prev_crawl_id   from  kosh.column_metadata where crawl_id =  $mapgetcrawljobno.crawl_id$ ) b
+where a.table_id = b_table_id
+and a.column_id = b.column_id
+and  a.crawl_id =  b.prev_crawl_id;
+
+update kosh.table_privileges a
+set valid_to_ts = '9999-12-31'
+from  (select   table_id as b_table_id , prev_crawl_id   from  kosh.table_privileges where crawl_id =  $mapgetcrawljobno.crawl_id$ ) b
+where a.table_id = b_table_id
+and  a.crawl_id =  b.prev_crawl_id;
+
+update kosh.index_column a 
+set valid_to_ts = '9999-12-31'
+from  (select   table_id as b_table_id , prev_crawl_id   from  kosh.index_column where crawl_id =  $mapgetcrawljobno.crawl_id$ ) b
+where a.table_id = b_table_id
+and  a.crawl_id =  b.prev_crawl_id;
+
+>>
+
+rollbackTableDelete(mapgetcrawljobno) ::= <<
+delete from kosh.table_entity
+where crawl_id = $mapgetcrawljobno.crawl_id$;
+
+delete from kosh.column_metadata
+where crawl_id = $mapgetcrawljobno.crawl_id$;
+
+delete from kosh.table_privileges
+where crawl_id = $mapgetcrawljobno.crawl_id$;
+
+delete from kosh.index_column
+where crawl_id = $mapgetcrawljobno.crawl_id$;
+
+>>
+
+
+  

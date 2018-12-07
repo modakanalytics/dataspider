@@ -1,0 +1,10 @@
+{
+	"name": "postgres_all",
+	"type": "postgres",
+	"description": "This is Postgres Connection profile",
+	"jdbc_driver": "org.postgresql.Driver",
+	"jdbc_url": "<EDIT TO ADD JDBC URL FOR POSTGRESQL DATABASE>",
+	"username": "<EDIT TO ADD USERNAME>",
+	"passwd": "<EDIT TO ADD ENCYRPTED PASSWORD>",
+	"encrypted_passwd": "Y"
+}

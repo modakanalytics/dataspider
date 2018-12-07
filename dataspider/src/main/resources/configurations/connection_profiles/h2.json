@@ -1,0 +1,10 @@
+{
+	"name": "h2_all",
+	"type": "h2",
+	"description": "This is H2 Connection profile",
+	"jdbc_driver": "org.h2.Driver",
+	"jdbc_url": "<EDIT TO ADD JDBC URL FOR H2 DATABASE>",
+	"username": "<EDIT TO ADD USERNAME OF H2 DB>",
+	"passwd": "<EDIT TO ADD PASSWORD OF H2 DB>",
+	"encrypted_passwd": "N"
+}

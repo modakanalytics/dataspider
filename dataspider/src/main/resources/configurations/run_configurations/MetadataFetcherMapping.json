@@ -1,0 +1,9 @@
+{
+	"oracle": "com.modak.dataspider.FetchOracleStats",
+	"sql_server": "com.modak.dataspider.FetchSqlServer",
+	"postgres": "com.modak.dataspider.FetchPostgresStats",
+	"mysql": "com.modak.dataspider.FetchMySQLStats",
+	"h2":"com.modak.dataspider.FetchH2Stats"
+}
+
+

@@ -1,0 +1,12 @@
+{
+  "name": "kosh_dev",
+  "type": "postgresql",
+  "description": "This is Postgres Connection profile",
+  "jdbc_driver": "org.postgresql.Driver",
+  "jdbc_url": "<EDIT TO ADD JDBC URL FOR KOSH POSTGRESQL DATABASE>",
+  "username": "<EDIT TO ADD USERNAME FOR KOSH DB>",
+  "passwd": "<EDIT TO ADD PASSWORD OF KOSH DATABASE>",
+  "encrypted_passwd": "N",
+  "minConnectionsPerPartition": "1",
+  "maxConnectionsPerPartition": "1"
+}

@@ -1,0 +1,106 @@
+group mysql_stats;
+
+query_dba_all_tables(connectProperties) ::= <<
+
+Select * from (SELECT
+$connectProperties.datastore_id$  as datastore_id,
+$connectProperties.component_id$  as component_id,
+'$connectProperties.host$' as hostname,
+'$connectProperties.instance_name$' as instance_name,
+upper('$connectProperties.schema_name$') as schema_name,
+t1.table_name,
+'$connectProperties.instance_name$' as table_owner,
+null as status,
+cast(TABLE_ROWS as signed) as estimated_rows,
+null as num_columns,
+null as inserts,
+null as updates,
+null as deletes,
+t1.create_time as create_table_ts,
+t1.update_time as modified_table_ts,
+round(((t1.data_length + t1.index_length) / 1024 / 1024), 2) as  table_size,
+'source' as table_layer,
+null as location_path,
+null as tablespace_name,
+case when t1.table_type = 'BASE TABLE' then 'T' else 'V' end as table_type,
+'$connectProperties.connection_template$' as table_format,
+false as is_encrypted,
+false as is_compressed,
+null as table_type_owner,
+null as query
+from information_schema.tables t1
+WHERE  t1.table_schema in ('$connectProperties.schema_name$'))x
+>>
+
+query_all_tables_cols(connectProperties) ::= <<
+
+select * from (SELECT   $connectProperties.datastore_id$  as datastore_id,
+         $connectProperties.component_id$  as component_id,
+         '$connectProperties.instance_name$' as instance_name,
+         upper(table_schema) as schema_name,
+         '$connectProperties.instance_name$' as table_owner,
+         table_name,
+         column_name,
+         data_type ,
+         null as data_length,
+         cast(NUMERIC_PRECISION as signed) as data_precision,
+         cast(NUMERIC_SCALE as signed) as data_scale,
+         case 
+              when is_nullable='YES' then 'Y' 
+              else 'N' 
+         end as is_nullable,
+         cast(ORDINAL_POSITION as signed) as ordinal_position ,
+         null as num_distinct,
+         null as low_value,
+         null as high_value,
+         null as num_nulls,
+         null as avg_col_length
+FROM     information_schema.columns 
+WHERE    table_schema in ('$connectProperties.schema_name$'))x
+>>
+
+query_dba_indexes(connectProperties) ::= <<
+
+select * from (SELECT   $connectProperties.datastore_id$  as datastore_id,
+         $connectProperties.component_id$  as component_id,
+         '$connectProperties.instance_name$' as instance_name,
+         upper('$connectProperties.schema_name$') as schema_name,
+         t1.table_owner,
+         t2.table_name,
+         t2.column_name,
+         t1.index_name,
+         cast(t2.ORDINAL_POSITION as signed) as ordinal_position,
+         null as sort_order
+FROM     (select
+    t.table_name ,
+    ix.index_name ,
+    ix.column_name ,
+    '$connectProperties.instance_name$' as table_owner
+from
+    information_schema.tables t,
+    information_schema.STATISTICS ix
+    
+where
+    t.table_name = ix.table_name
+   
+order by
+    t.table_name )t1 
+    join 
+    information_schema.columns t2 on t2.table_name = t1.table_name and t2.column_name=t1.column_name
+     WHERE    t2.table_schema in ('$connectProperties.schema_name$'))x
+>>
+
+query_dba_privileges(connectProperties) ::= <<
+select * from (Select
+          $connectProperties.datastore_id$  as datastore_id,
+          $connectProperties.component_id$  as component_id,
+         '$connectProperties.instance_name$' as instance_name,
+         upper('$connectProperties.schema_name$') as schema_name,
+         table_name,
+         grantee,
+         null as grantor,
+         privilege_type,
+         case when is_grantable='YES' then true else false end as is_grantable
+from information_schema.table_privileges
+where table_schema in ('$connectProperties.schema_name$'))x
+>>

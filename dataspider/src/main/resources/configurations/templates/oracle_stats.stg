@@ -1,0 +1,90 @@
+group oracle_stats;
+
+query_all_tables_cols(connectProperties) ::= <<
+select  $connectProperties.datastore_id$ as datastore_id, $connectProperties.component_id$ as component_id,upper('$connectProperties.instance_name$') as instance_name, upper(owner) as schema_name,owner as table_owner, table_name,column_name, data_type, data_length, data_precision, data_scale, nullable as is_nullable, SEGMENT_COLUMN_ID as ordinal_position,  num_distinct, low_value, high_value, num_nulls, avg_col_len
+from all_tab_cols  where  owner in ('$connectProperties.schema_name$')
+>>
+
+query_dba_all_tables(connectProperties)::=<<
+Select datastore_id,component_id,host,upper(instance_name) as instance_name,upper(schema_name) as schema_name ,table_name,table_owner,status,estimated_rows,null as num_columns,inserts,updates,deletes, create_table_ts,modified_table_ts,table_size,table_layer,location_path,tablespace_name,table_type,table_format,is_encrypted,is_compressed,table_type_owner,query
+from (
+select datastore_id,component_id,instance_name,schema_name,host,table_name,table_owner,status,estimated_rows,inserts,updates,deletes, create_table_ts,modified_table_ts,table_size,table_layer,location_path,tablespace_name,table_type,table_format,is_encrypted,is_compressed,table_type_owner,query,
+ROW_NUMBER() OVER(PARTITION BY lower(trim(schema_name)) , lower(trim(table_name)) order by modified_table_ts desc, create_table_ts desc ) as rowids, object_id_type_flag from
+(
+select $connectProperties.datastore_id$ as datastore_id,$connectProperties.component_id$ as component_id,'$connectProperties.instance_name$' as instance_name, a.owner as  schema_name,'$connectProperties.host$' as host ,a.table_name, a.owner as table_owner, a.status, a.num_rows as estimated_rows , b.inserts, b.updates,
+b.deletes, d.created as create_table_ts, b.timestamp as modified_table_ts,  (c.bytes*1.0)/1024/1024/1024 as table_size, 'source'  as table_layer,null as location_path,
+a.tablespace_name, 'T' as table_type,'$connectProperties.connection_template$' as table_format,'false' as is_encrypted ,'false' as is_compressed ,table_type_owner, null as query, object_id_type_flag
+from(select table_name,owner, status,num_rows, tablespace_name, table_type_owner,  coalesce(object_id_type,'yes') as object_id_type_flag  from  dba_all_tables where  owner in ('$connectProperties.schema_name$')
+and (TEMPORARY !='Y' and SECONDARY != 'Y') AND (TABLE_NAME not like 'MLOG\$%') AND (TABLE_NAME not like 'DR\$%' )
+) a
+left outer join
+(select * from all_tab_modifications where  table_owner in ('$connectProperties.schema_name$') AND (TABLE_NAME not like 'MLOG\$%') AND (TABLE_NAME not like 'DR\$%' ))b
+on  a.owner = b.table_owner  and a.table_name = b.table_name
+left outer join
+(select  * from dba_segments where  segment_type = 'TABLE' and  owner in ('$connectProperties.schema_name$') ) c
+on a.owner = c.owner and a.table_name = c.segment_name
+left outer join
+(select  * from all_objects where object_type = 'TABLE' and  owner in ('$connectProperties.schema_name$') ) d
+on a.owner = d.owner and a.table_name = d.object_name
+
+union all
+
+select $connectProperties.datastore_id$ as datastore_id, $connectProperties.component_id$ as component_id,
+ '$connectProperties.instance_name$' as instance_name, a.owner as  schema_name, '$connectProperties.host$' as host,a.mview_name as table_name,
+   a.owner as table_owner,d.status,cast(null as NUMERIC(19)) as estimated_rows ,b.inserts,b.updates,b.deletes,d.created as create_table_ts,
+ b.timestamp as modified_table_ts,(c.bytes*1.0)/1024/1024/1024 as table_size,'Yes'  as table_layer,null as location_path,c.tablespace_name,
+'M' as   table_type ,'$connectProperties.connection_template$' as table_format ,
+'false' as is_encrypted,'false' as is_compressed,'' as  table_type_owner ,a.query as query, 'yes' as object_id_type_flag
+from(select * from  ALL_MVIEWS  where  owner in ('$connectProperties.schema_name$')
+) a
+left outer join
+(select * from all_tab_modifications where  table_owner in ('$connectProperties.schema_name$') and
+(TABLE_NAME not like 'MLOG\$%') AND (TABLE_NAME not like 'DR\$%' ))b
+on  a.owner = b.table_owner  and a.mview_name = b.table_name
+left outer join
+(select  * from dba_segments where  segment_type = 'MATERIALIZED VIEW' and  owner in ('$connectProperties.schema_name$')
+) c
+on a.owner = c.owner and a.mview_name = c.segment_name
+left outer join
+(select  * from all_objects where object_type = 'MATERIALIZED VIEW' and owner in ('$connectProperties.schema_name$')
+) d
+on a.owner = d.owner and a.mview_name = d.object_name
+left outer join
+(select * from USER_MVIEWS
+)e
+on a.owner = e.owner and a.mview_name = e.mview_name
+
+union all
+
+select $connectProperties.datastore_id$ as datastore_id, $connectProperties.component_id$ as component_id, '$connectProperties.instance_name$' as instance_name,a.owner as  schema_name,'$connectProperties.host$' as host,
+ a.view_name as table_name,    a.owner as table_owner, d.status,  cast(null as NUMERIC(19)) as estimated_rows , b.inserts, b.updates,b.deletes,d.created as create_table_ts,
+ b.timestamp as modified_table_ts,  (c.bytes*1.0)/1024/1024/1024 as table_size,   'Yes'  as table_layer, null as location_path,c.tablespace_name,'V' as   table_type ,
+'$connectProperties.connection_template$' as table_format ,'false' as is_encrypted,'false' as is_compressed,'' as  table_type_owner ,a.text as query, 'yes' as object_id_type_flag
+from(select * from  all_views where  owner in ('$connectProperties.schema_name$') ) a
+left outer join
+(select * from all_tab_modifications where  table_owner in ('$connectProperties.schema_name$') AND (TABLE_NAME not like 'MLOG\$%') AND (TABLE_NAME not like 'DR\$%' ))b
+on  a.owner = b.table_owner  and a.view_name = b.table_name
+left outer join
+(select  * from dba_segments where  segment_type = 'VIEW' and  owner in ('$connectProperties.schema_name$') ) c
+on a.owner = c.owner and a.view_name = c.segment_name
+left outer join
+(select  * from all_objects where object_type = 'VIEW' and  owner in ('$connectProperties.schema_name$') ) d
+on a.owner = d.owner and a.view_name = d.object_name
+left outer join
+(select  * from USER_VIEWS
+) e
+on a.view_name = e.view_name
+ )x )y where rowids = 1 and  object_id_type_flag !='SYSTEM GENERATED'
+>>
+
+
+query_dba_indexes(connectProperties) ::= <<
+select $connectProperties.datastore_id$ as datastore_id,$connectProperties.component_id$ as component_id,upper('$connectProperties.instance_name$') as instance_name, upper(table_owner) as schema_name,table_owner as table_owner,table_name,column_name,index_name, column_position as ordinal_position, descend as sort_order
+from all_ind_columns where  table_owner in ('$connectProperties.schema_name$')
+>>
+
+query_dba_privileges(connectProperties) ::= <<
+select $connectProperties.datastore_id$ as datastore_id,$connectProperties.component_id$ as component_id,upper('$connectProperties.instance_name$') as instance_name,upper(owner) as schema_name ,table_name, grantee,  grantor, privilege as privilege_type,
+case when grantable = 'NO' THEN 'False' else 'True' end as is_grantable
+from sys.dba_tab_privs where  owner in ('$connectProperties.schema_name$')
+>>

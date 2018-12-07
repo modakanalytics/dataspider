@@ -1,0 +1,88 @@
+group postgres_stats;
+
+query_dba_all_tables(connectProperties) ::= <<
+select $connectProperties.datastore_id$ as datastore_id,
+cast($connectProperties.component_id$ as int) as component_id,
+'$connectProperties.hostname$' as hostname,
+'$connectProperties.instance_name$' as instance_name,
+'$connectProperties.schema_name$' as schema_name ,
+table_name,
+table_schema as table_owner,
+null as status,
+row_count_estimate as estimated_rows,
+null as num_columns ,
+null as inserts,
+last_modification as updates,
+null as deletes,
+null as create_table_ts,
+null as modified_table_ts,
+null as table_size,
+'source' as table_layer,
+null as location_path,
+null as tablespace_name,
+case when table_type = 'TABLE' then 'T' else 'V' end as table_type,
+'h2' as table_format,
+false as is_encrypted,
+false as is_compressed,
+null as table_type_owner,
+sql as query
+from information_schema.tables where table_schema in ('$connectProperties.schema_name$')
+>>
+
+query_all_tables_cols(connectProperties) ::= <<
+SELECT   $connectProperties.datastore_id$ as datastore_id,
+        $connectProperties.component_id$ as component_id,
+         '$connectProperties.instance_name$' as instance_name,
+         table_schema as schema_name,
+         table_schema as table_owner,
+         table_name,
+         column_name,
+         column_type,
+         character_maximum_length as data_length,
+         numeric_precision as data_precision,
+         numeric_scale as data_scale,
+         case
+              when is_nullable='YES' then 'Y'
+              else 'N'
+         end as is_nullable,
+          ordinal_position,
+         null as num_distinct,
+         null as low_value,
+         null as high_value,
+         null as num_nulls,
+         null as avg_col_length
+FROM     information_schema.columns
+WHERE    table_schema in ('$connectProperties.schema_name$')
+>>
+
+query_dba_indexes(connectProperties) ::= <<
+SELECT   $connectProperties.datastore_id$ as datastore_id,
+        $connectProperties.component_id$ as component_id,
+         '$connectProperties.instance_name$' as instance_name,
+        table_schema as schema_name,
+          table_schema as table_owner,
+         table_name,
+         column_name,
+         index_name,
+         ordinal_position,
+         null as sort_order
+FROM
+          information_schema.indexes
+WHERE    table_schema in ('$connectProperties.schema_name$');
+
+>>
+
+query_dba_privileges(connectProperties) ::= <<
+Select
+         $connectProperties.datastore_id$ as datastore_id,
+         $connectProperties.component_id$ as component_id,
+         '$connectProperties.instance_name$' as instance_name,
+         '$connectProperties.schema_name$' as schema_name,
+         table_name,
+         grantee,
+         grantor,
+         privilege_type,
+         case when is_grantable='YES' then true else false end as is_grantable
+from information_schema.table_privileges
+where table_schema in ('$connectProperties.schema_name$')
+>>

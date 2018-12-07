@@ -1,0 +1,10 @@
+{
+	"name": "sql_server_all",
+	"type": "sql_server",
+	"description": "This is Sql Server Connection profile",
+	"jdbc_driver": "net.sourceforge.jtds.jdbc.Driver",
+	"username": "<EDIT TO ADD PASSWORD>",
+	"passwd": "<EDIT TO ADD ENCYRPTED PASSWORD>",
+	"jdbc_url": "<EDIT TO ADD JDBC SQL_SERVER DATABASE>",
+	"encrypted_passwd": "Y"
+}

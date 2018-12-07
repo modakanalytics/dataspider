@@ -1,0 +1,287 @@
+group kosh_sqls;
+
+getSourceMetaData_sql_server() ::= <<
+SELECT   scom.*,
+         cp.connection_template as connection_template,
+         si.source_name,
+         si.description,
+         rcom.hostname as host,
+         rcom.instance_name,
+         sd.domain_area,
+         scon.name,
+         scon.role,
+         rcom.instance_name,
+         rcom.schema_name as schema_name
+FROM     kosh.datastore_component scom
+         JOIN kosh.datastore_domain sd ON scom.datastore_id=sd.datastore_id
+         JOIN kosh.datastore_contact scon ON scon.datastore_id=scom.datastore_id
+         JOIN kosh.datastore_inventory si ON si.datastore_id=scom.datastore_id
+         JOIN kosh.relational_component rcom ON rcom.datastore_id=scom.datastore_id
+         JOIN kosh.connection_profile cp ON cp.connection_profile_id = scom.connection_profile_id
+WHERE    scom.is_active = true
+AND 	cp.connection_template='sql_server'
+>>
+
+
+
+getSourceMetaData_mysql() ::= <<
+SELECT   scom.*,
+         cp.connection_template as connection_template,
+         si.source_name,
+         si.description,
+         rcom.hostname as host,
+         rcom.instance_name,
+         sd.domain_area,
+         scon.name,
+         scon.role,
+         rcom.instance_name,
+         rcom.schema_name as schema_name
+FROM     kosh.datastore_component scom
+         JOIN kosh.datastore_domain sd ON scom.datastore_id=sd.datastore_id
+         JOIN kosh.datastore_contact scon ON scon.datastore_id=scom.datastore_id
+         JOIN kosh.datastore_inventory si ON si.datastore_id=scom.datastore_id
+         JOIN kosh.relational_component rcom ON rcom.datastore_id=scom.datastore_id
+         JOIN kosh.connection_profile cp ON cp.connection_profile_id = scom.connection_profile_id
+WHERE    scom.is_active = true
+AND 	cp.connection_template='mysql'
+
+>>
+
+getSourceMetaData_postgres() ::=<<
+SELECT   scom.*,
+         cp.connection_template as connection_template,
+         si.source_name,
+         si.description,
+         rcom.hostname,
+         rcom.instance_name,
+         sd.domain_area,
+         scon.name,
+         scon.role,
+         rcom.instance_name,
+         'kosh' as schema_name
+FROM     kosh.datastore_component scom
+         JOIN kosh.datastore_domain sd ON scom.datastore_id=sd.datastore_id
+         JOIN kosh.datastore_contact scon ON scon.datastore_id=scom.datastore_id
+         JOIN kosh.datastore_inventory si ON si.datastore_id=scom.datastore_id
+         JOIN kosh.relational_component rcom ON rcom.datastore_id=scom.datastore_id
+         JOIN kosh.connection_profile cp ON cp.connection_profile_id = scom.connection_profile_id
+WHERE    scom.is_active = true
+AND 	cp.connection_template='postgres'
+>>
+
+
+getSourceMetaData_h2() ::=<<
+SELECT   scom.*,
+         cp.connection_template as connection_template,
+         si.source_name,
+         si.description,
+         rcom.hostname,
+         rcom.instance_name,
+         sd.domain_area,
+         scon.name,
+         scon.role,
+         rcom.instance_name,
+         rcom.schema_name as schema_name
+
+FROM     kosh.datastore_component scom
+         JOIN kosh.datastore_domain sd ON scom.datastore_id=sd.datastore_id
+         JOIN kosh.datastore_contact scon ON scon.datastore_id=scom.datastore_id
+         JOIN kosh.datastore_inventory si ON si.datastore_id=scom.datastore_id
+         JOIN kosh.relational_component rcom ON rcom.datastore_id=scom.datastore_id
+         JOIN kosh.connection_profile cp ON cp.connection_profile_id = scom.connection_profile_id
+WHERE    scom.is_active = true
+AND 	cp.connection_template='h2'
+>>
+
+
+getSourceMetaData_oracle() ::= <<
+SELECT   scom.*,
+         cp.connection_template as connection_template,
+         si.source_name,
+         si.description,
+         rcom.hostname as host,
+         rcom.instance_name,
+         sd.domain_area,
+         scon.name,
+         scon.role,
+         rcom.instance_name,
+         rcom.schema_name as schema_name
+FROM     kosh.datastore_component scom
+         JOIN kosh.datastore_domain sd ON scom.datastore_id=sd.datastore_id
+         JOIN kosh.datastore_contact scon ON scon.datastore_id=scom.datastore_id
+         JOIN kosh.datastore_inventory si ON si.datastore_id=scom.datastore_id
+         JOIN kosh.relational_component rcom ON rcom.datastore_id=scom.datastore_id
+         JOIN kosh.connection_profile cp ON cp.connection_profile_id = scom.connection_profile_id
+WHERE    scom.is_active = true 
+AND 	 cp.connection_template='oracle'
+>>
+
+
+
+getSourceMetaData_all_sources() ::=<<
+SELECT   scom.*,
+         cp.connection_template as connection_template,
+         si.source_name,
+         si.description,
+         rcom.hostname as host,
+         rcom.instance_name,
+         sd.domain_area,
+         scon.name,
+         scon.role,
+         rcom.instance_name,
+         rcom.schema_name as schema_name
+FROM     kosh.datastore_component scom
+         JOIN kosh.datastore_domain sd ON scom.datastore_id=sd.datastore_id
+         JOIN kosh.datastore_contact scon ON scon.datastore_id=scom.datastore_id
+         JOIN kosh.datastore_inventory si ON si.datastore_id=scom.datastore_id
+         JOIN kosh.relational_component rcom ON rcom.datastore_id=scom.datastore_id
+         JOIN kosh.connection_profile cp ON cp.connection_profile_id = scom.connection_profile_id
+WHERE    scom.is_active = true
+AND 	 cp.connection_template in ('oracle','sql_server','mysql','postgres')
+>>
+
+
+stagingInsert_TableMetadataFromSource() ::= <<
+insert into staging.src_table_entity_from_source(datastore_id,component_id,hostname,instance_name,schema_name,table_name,table_owner,status,estimated_rows,num_columns,inserts,updates,deletes,create_table_ts,modified_table_ts,table_size,table_layer,location_path,tablespace_name,table_type,table_format,is_encrypted,is_compressed,table_type_owner,query) values(?,?,?,?,?,?,?,coalesce(?,'VALID'),?,?,?,?,?,?,?,?,?,?,?,?,?, ?::boolean,?::boolean,?,regexp_replace(?, '''','''''','g'));
+>>
+
+stagingInsert_TableMetadataFromSource_mysql() ::=<<
+insert into staging.src_table_entity_from_source(datastore_id,component_id,hostname,instance_name,schema_name,table_name,table_owner,status,estimated_rows,num_columns,inserts,updates,deletes,create_table_ts,modified_table_ts,table_size,table_layer,location_path,tablespace_name,table_type,table_format,is_encrypted,is_compressed,table_type_owner,query) values(?,?,?,?,?,?,?,coalesce(?,'VALID'),?,?,?,?,?,?,?,?,?,?,?,?,?, (?::smallint)::int::boolean,(?::smallint)::int::boolean,?,regexp_replace(?, '''','''''','g'));
+
+>>
+
+stagingInsert_ColumnsDataFromSource() ::= <<
+insert into staging.column_metadata_from_source(datastore_id,component_id,instance_name,schema_name,table_owner,table_name,column_name,data_type,data_length,data_precision,data_scale,is_nullable,ordinal_position,num_distinct,low_value,high_value,num_nulls,avg_col_len) values(?,?,?,?,?,?,?,?,?,?,?,case when ?='Y' then true::boolean else false::boolean end,?,?,?,?,?,?);
+
+>>
+
+stagingInsert_IndexColumnsFromSource() ::= <<
+insert into staging.index_column_from_source(datastore_id,component_id,instance_name,schema_name,table_owner,table_name,column_name,index_name,ordinal_position,sort_order) values(?,?,?,?,?,?,?,?,?,?);
+
+>>
+
+stagingInsert_TablePrivilegesFromSource() ::= <<
+insert into staging.table_privileges_from_source(datastore_id,component_id,instance_name,schema_name,table_name,grantee,grantor,privilege_type,is_grantable) values(?,?,?,?,?,?,?,?,?::boolean);
+
+>>
+
+
+koshInsert_TableMetadataFromSource() ::= <<
+
+insert into kosh.table_entity(datastore_id, component_id, instance_name, schema_name, table_name, table_owner, status, estimated_rows, inserts, updates, deletes, create_table_ts, modified_table_ts, table_size, num_columns, table_layer, location_path, tablespace_name, table_format, is_encrypted, is_compressed, table_type, table_type_owner, valid_from_ts, valid_to_ts, crawl_id, prev_crawl_id, lineage_uuid, crt_by, crt_ts, mod_by, mod_ts)
+SELECT  datastore_id,1,instance_name,schema_name,table_name,table_owner,null,estimated_rows,inserts,updates,deletes,create_table_ts,modified_table_ts,table_size,num_columns,table_layer,location_path,tablespace_name,table_format,is_encrypted,is_compressed,table_type,table_type_owner,now(),'9999-12-31'::date,1,0,null,'modak',now(),'modak',now() FROM     staging.src_table_entity_from_source
+>>
+
+
+
+koshInsert_ColumnsDataFromSource() ::= <<
+insert into  kosh.column_metadata( datastore_id,component_id,instance_name,schema_name , table_owner, table_name,column_name, crawl_id, prev_crawl_id, data_type, data_length,
+							data_precision, data_scale, is_nullable,ordinal_position, num_distinct,low_value, high_value,num_nulls,avg_col_len, valid_from_ts,
+							valid_to_ts, crt_by, crt_ts, mod_by, mod_ts)
+		select datastore_id,1,instance_name,schema_name,table_owner,table_name,column_name, 1,0,
+		 data_type, data_length, data_precision, data_scale, is_nullable,ordinal_position, num_distinct,null,null,num_nulls,avg_col_len,now(),'9999-12-31'::date, 'modak',now()
+		,'modak',now() from  staging.column_metadata_from_source;
+
+
+
+update kosh.column_metadata a
+		set table_id = b.table_id
+		from kosh.table_entity b
+		where a.table_name= b.table_name
+		and a.instance_name= b.instance_name
+		and a.datastore_id= b.datastore_id;
+
+>>
+
+koshInsert_IndexColumnsFromSource() ::= <<
+insert into kosh.index_column( datastore_id, component_id, instance_name, schema_name, column_name,index_name,crawl_id, prev_crawl_id ,ordinal_position,
+										sort_order,table_owner,table_name,valid_from_ts, valid_to_ts,crt_by, crt_ts, mod_by, mod_ts)
+										select datastore_id,component_id,instance_name,schema_name,column_name,index_name,1,0,ordinal_position,sort_order,
+		                                  table_owner,table_name,now(),'9999-12-31'::date,'modak',now(),'modak',now() from staging.index_column_from_source
+>>
+
+koshInsert_TablePrivilegesFromSource() ::= <<
+insert into kosh.table_privileges(datastore_id, component_id, instance_name, schema_name,table_name, crawl_id, prev_crawl_id ,
+	 grantee, grantor, privilege_type, is_grantable, valid_from_ts, valid_to_ts, crt_by, crt_ts, mod_by, mod_ts) select datastore_id,component_id,instance_name,
+	 schema_name,table_name,1,0,grantee,grantor,privilege_type,is_grantable,now(),'9999-12-31'::date,'modak',now(),'modak',now() from staging.table_privileges_from_source
+>>
+
+
+
+
+stagingTruncate_Batch() ::= <<
+  truncate table staging.table_privileges_from_source cascade;
+  truncate table staging.index_column_from_source cascade;
+  truncate table staging.column_metadata_from_source cascade;
+  truncate table staging.src_table_entity_from_source cascade;
+  truncate table kosh.table_entity cascade;
+  truncate table kosh.column_metadata cascade;
+  truncate table kosh.index_column cascade;
+  truncate table kosh.table_privileges cascade;
+  >>
+
+insertLogs(log_message,datastore_id,schema_list,log_message) ::= <<
+insert into staging.log_error(log_type, datastore_id, schema_list, log_message) values('$log_type$','$datastore_id$', '$schema_list$', '$log_message$')
+>>
+
+getNewCrawlJobInfo() ::= <<
+select coalesce(max(crawl_id),0)+1 as crawl_id from kosh.crawl_xref
+>>
+
+getCrawlJobInfo() ::= <<
+select coalesce(max(crawl_id),0) as crawl_id from kosh.crawl_xref
+>>
+
+
+insertCrawlJobInfo(crawl_id) ::= <<
+insert into kosh.crawl_xref
+select coalesce($crawl_id$,0), coalesce($crawl_id$,0) -1  , current_timestamp, TIMESTAMP '9999-12-31 00:00:00','modak',now(),'modak',now()
+>>
+
+updateCrawlJobInfo_Finished(crawl_id) ::= <<
+update kosh.crawl_xref set crawl_end_ts = current_timestamp where crawl_id = $crawl_id$
+>>
+
+insert_error_into_log_table() ::= <<
+insert into kosh.log_table(log_type,log_message_type,log_message,added_ts,crt_by,crt_ts,mod_by,mod_ts) values('error',?,?,current_timestamp,'modak',now(),'modak',now())
+>>
+
+insert_error_into_connection_error() ::= <<
+insert into kosh.connection_error(datastore_id,connection_error_desc,crawl_id,prev_crawl_id,added_ts,crt_by,crt_ts,mod_by,mod_ts) values(?,?,?,?,?::timestamp,'modak',now(),'modak',now());
+>>
+
+
+
+
+insertIntoDataSpiderVerificationBatch() ::=<<
+
+insert into kosh.data_spider_verification
+SELECT   datastore_id,table_id,instance_name, table_owner, schema_name,table_name, table_format, null as column_name,'duplicate_table_metadata_v1' as flag,current_timestamp::Date as added_ts,'modak',now(),'modak',now()
+FROM     kosh.table_entity
+WHERE    (datastore_id, instance_name, table_owner, schema_name, table_name) in ( select datastore_id, coalesce(instance_name,''), table_owner, schema_name, table_name from ( SELECT datastore_id, instance_name, table_owner, schema_name, table_name, count(table_id) FROM (SELECT datastore_id, instance_name, table_owner, schema_name, table_name, table_id FROM kosh.table_entity where valid_to_ts = '9999-12-31' )x GROUP BY datastore_id, instance_name, table_owner, schema_name, table_name HAVING count(table_id) > 1)x );
+
+insert into kosh.data_spider_verification
+SELECT   datastore_id,table_id,instance_name,table_owner,schema_name,table_name,table_format, null as column_name,'duplicate_table_metadata' as flag,current_timestamp::Date as added_ts,'m
+odak',now(),'modak',now()
+FROM     (SELECT   *,count(*) over (partition by table_id ) as cnt
+          FROM     kosh.table_entity
+          WHERE    valid_to_ts = '9999-12-31')x
+WHERE    cnt > 1;
+
+insert into kosh.data_spider_verification
+select   datastore_id,table_id, instance_name,table_owner,schema_name,table_name,table_format,column_name,'duplicate_column_metadata' as flag,current_timestamp::Date as added_ts,'m
+odak',now(),'modak',now()
+FROM     (select   datastore_id,table_id,instance_name,table_owner,schema_name, table_name,null as table_format,column_name,count(*)
+          FROM     kosh.column_metadata
+          WHERE    valid_to_ts= '9999-12-31'
+          GROUP BY datastore_id, table_id, instance_name, table_owner, schema_name,
+         table_name, column_name
+HAVING   count(*) >1)x;
+
+insert into  kosh.data_spider_verification
+select   datastore_id, table_id,instance_name,table_owner,schema_name,table_name,table_format,null as column_name,'no_column_metadata' as flag,current_timestamp::Date as added_ts,'modak',now()
+,'modak',now()
+FROM     kosh.table_entity
+WHERE    table_id not in (select distinct table_id from kosh.column_metadata)
+AND      table_format in  ('oracle','sql_server','mysql','postgres');
+>>

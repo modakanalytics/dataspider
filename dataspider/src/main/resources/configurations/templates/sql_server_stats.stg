@@ -1,0 +1,172 @@
+group sql_server_stats;
+
+query_dba_all_tables(connectProperties) ::= <<
+
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+select   datastore_id ,
+$connectProperties.component_id$ as component_id,
+host as hostname,
+upper('$connectProperties.instance_name$') as  instance_name,
+upper(schema_name) as schema_name ,
+TableName as table_name,
+table_owner ,
+status ,
+rows as estimated_rows ,
+null as num_columns ,
+inserts ,
+updates ,
+deletes ,
+ create_date as create_table_ts,
+modify_date as modified_table_ts,
+ TotalSpaceGB as table_size,
+'source' as table_layer,
+null as location_path,
+ table_space as tablespace_name,
+ table_type, 
+ '$connectProperties.connection_template$' as table_format,
+cast(0 as bit) as is_encrypted,
+cast(0 as bit) as is_compressed,
+ table_type_owner,
+ null as query
+from (
+select   datastore_id ,  host,  connection_template ,table_type,  table_owner ,  schema_name , TableName,  status , rows ,
+ inserts ,  updates , deletes , create_date, modify_date,TotalSpaceGB ,table_space , table_type_owner, 
+row_number() over (partition by  table_owner ,  schema_name , TableName order by rows desc) as row_num   from (
+select $connectProperties.datastore_id$ as datastore_id,'$connectProperties.host$' as host, '$connectProperties.connection_template$' as connection_template, 'T' as table_type, 
+s.name  as table_owner , coalesce(x.table_catalog,s.name)  as schema_name ,t.name AS TableName, null as status ,    p.rows ,0 as inserts , 0 as updates , 0 as deletes ,  create_date,
+modify_date, (SUM(a.total_pages) * 8)/1024.0/1024.0 AS TotalSpaceGB , null as table_space , null as table_type_owner 
+FROM 
+ ( select  * from sys.schemas)  s 
+INNER JOIN 
+sys.tables t  ON t.schema_id = s.schema_id 
+INNER JOIN 
+sys.indexes i ON t.OBJECT_ID = i.object_id 
+INNER JOIN 
+sys.partitions p ON i.object_id = p.OBJECT_ID AND i.index_id = p.index_id 
+INNER JOIN 
+sys.allocation_units a ON p.partition_id = a.container_id 
+inner  join 
+$connectProperties.schema_name$.INFORMATION_SCHEMA.TABLES x on t.name = x.table_name  
+GROUP BY t.name, s.name, p.rows , table_catalog,  create_date, modify_date, t.type
+
+union all 
+
+select $connectProperties.datastore_id$ as datastore_id,'$connectProperties.host$' as host, '$connectProperties.connection_template$' as connection_template, 'V' as table_type,
+ s.name  as table_owner ,  coalesce(x.table_catalog,s.name)  as schema_name ,t.name AS TableName, null as status ,   
+  p.rows ,0 as inserts , 0 as updates , 0 as deletes ,  create_date,
+modify_date, (SUM(a.total_pages) * 8)/1024.0/1024.0 AS TotalSpaceGB , null as table_space , null as table_type_owner 
+FROM 
+ ( select  * from sys.schemas)  s 
+INNER JOIN 
+sys.all_views t  ON t.schema_id = s.schema_id 
+left outer  JOIN 
+sys.indexes i ON t.OBJECT_ID = i.object_id 
+left outer  JOIN 
+sys.partitions p ON i.object_id = p.OBJECT_ID AND i.index_id = p.index_id 
+left outer  JOIN 
+sys.allocation_units a ON p.partition_id = a.container_id 
+left outer  JOIN  
+$connectProperties.schema_name$.INFORMATION_SCHEMA.TABLES x on t.name = x.table_name  
+GROUP BY t.name, s.name, p.rows, table_catalog,  create_date, modify_date ) x
+where lower(schema_name) != 'sys' and lower(schema_name) != 'information_schema' and lower(schema_name) != 'dbo'
+) y where row_num = 1
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+>>
+	
+query_all_tables_cols(connectProperties) ::= <<
+
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+select 	$connectProperties.datastore_id$ as datastore_id,
+	$connectProperties.component_id$ as component_id,
+	upper('$connectProperties.instance_name$') as instance_name, upper(coalesce(u.table_catalog,s.name)) as schema_name  ,
+	s.name as table_owner,
+	t.name as table_name,
+	p.name as column_name,
+	v.DATA_TYPE as data_type,
+	max_length as data_length ,
+	NUMERIC_PRECISION as data_precision ,
+	NUMERIC_scale as data_scale  ,
+	case when  p.IS_NULLABLE  = 'true' then 'Y' else 'N' end  as is_nullable ,
+	ORDINAL_POSITION as ordinal_position,
+	null as  num_distinct,
+	null  as  low_value,
+	null as high_value ,
+	null as num_nulls,
+	character_maximum_length as avg_col_len
+  from sys.tables t inner join sys.columns p on t.object_id = p.object_id
+INNER JOIN (select  * from sys.schemas) s ON t.schema_id = s.schema_id    inner join
+$connectProperties.schema_name$.INFORMATION_SCHEMA.TABLES u  on s.name = u.table_schema and t.name  = u.table_name
+INNER JOIN $connectProperties.schema_name$.INFORMATION_SCHEMA.COLUMNS v   on   u.table_catalog = v.table_catalog and  u.table_schema = v.table_schema and u.table_name = v.table_name and p.name  = v.column_name
+
+ union all
+
+select  $connectProperties.datastore_id$ as datastore_id,
+        $connectProperties.component_id$ as component_id,
+        upper('$connectProperties.instance_name$') as instance_name,
+    upper(coalesce(u.table_catalog,s.name)) as schema_name  ,
+    s.name as table_owner,
+ 	t.name as table_name,
+ 	p.name as column_name,
+ 	v.DATA_TYPE as data_type,
+ 	max_length as data_length ,
+ 	NUMERIC_PRECISION as data_precision ,
+ 	NUMERIC_scale as data_scale  ,
+ 	case when  p.IS_NULLABLE  = 'true' then 'Y' else 'N' end  as is_nullable ,
+ 	ORDINAL_POSITION as ordinal_position,
+ 	null as  num_distinct,
+ 	null  as  low_value,
+ 	null as high_value ,
+ 	null as num_nulls,
+ 	character_maximum_length as avg_col_len
+   from sys.all_views t inner join sys.columns p on t.object_id = p.object_id
+ INNER JOIN (select  * from sys.schemas) s ON t.schema_id = s.schema_id    inner join
+ $connectProperties.schema_name$.INFORMATION_SCHEMA.VIEWS  u  on s.name = u.table_schema and t.name  = u.table_name
+ INNER JOIN $connectProperties.schema_name$.INFORMATION_SCHEMA.COLUMNS v   on   u.table_catalog = v.table_catalog and  u.table_schema = v.table_schema and u.table_name = v.table_name and p.name  = v.column_name
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+
+>>
+	
+query_dba_indexes(connectProperties) ::= <<
+
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+SELECT
+$connectProperties.datastore_id$ as datastore_id,
+	$connectProperties.component_id$ as component_id,
+	upper('$connectProperties.instance_name$') as instance_name,
+	upper(coalesce(x.table_catalog,c.name)) as schema_name ,
+	c.name as table_owner ,
+	a.name as table_name,
+	b.name as column_name,  
+	d.name as index_name , 
+	key_ordinal as ordinal_position,  
+	is_descending_key as sort_order	
+	FROM 
+sys.tables a 
+INNER JOIN 
+sys.columns b 
+on a.object_id = b.object_id 
+inner join  
+ ( select  * from sys.schemas) c ON a.schema_id = c.schema_id 
+inner join 
+sys.indexes d ON a.OBJECT_ID = d.object_id 
+INNER JOIN 
+sys.index_columns e ON a.object_id = e.OBJECT_ID AND d.index_id = e.index_id and b.column_id = e.column_id
+INNER  JOIN $connectProperties.schema_name$.INFORMATION_SCHEMA.TABLES x on a.name = x.table_name	
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+>>
+
+query_dba_privileges(connectProperties)::=<<
+
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+SELECT $connectProperties.datastore_id$ as datastore_id,
+$connectProperties.component_id$ as component_id,
+upper('$connectProperties.host$') as instance_name,
+table_name,
+upper(TABLE_SCHEMA) as schema_name,
+GRANTEE as grantee,
+GRANTOR as grantor,
+PRIVILEGE_TYPE as privilege_type,
+IS_GRANTABLE as is_grantable
+FROM "$connectProperties.schema_name$"."INFORMATION_SCHEMA"."TABLE_PRIVILEGES" 
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+>>

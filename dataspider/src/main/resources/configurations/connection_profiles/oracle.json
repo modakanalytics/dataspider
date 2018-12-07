@@ -1,0 +1,10 @@
+{
+	"name": "oracle_all",
+	"type": "oracle",
+	"description": "This is Oracle Connection profile",
+	"jdbc_driver": "oracle.jdbc.driver.OracleDriver",
+	"jdbc_url": "<EDIT TO ADD JDBC ORACLE DRIVER>",
+	"username": "<EDIT TO ADD USERNAME>",
+	"passwd": "<EDIT TO ADD ENCRYPTED PASSWORD>",
+	"encrypted_passwd": "Y"
+}

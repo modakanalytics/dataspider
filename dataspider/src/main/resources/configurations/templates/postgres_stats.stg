@@ -1,0 +1,131 @@
+group postgres_stats;
+
+query_dba_all_tables(connectProperties) ::= <<
+with tmp1 as (
+select n.nspname as schemaname, c.relname as table_name, c.reltuples as row_count, (pg_total_relation_size(s.relid)*1.0)/1024/1024/1024 as table_size, s.n_tup_ins as inserts, s.n_tup_upd as updates, s.n_tup_del as deletes, t.table_type
+from pg_class c left join pg_namespace n
+on (n.oid = c.relnamespace) join pg_stat_all_tables s on s.schemaname = n.nspname and (c.relname = s.relname) join information_schema.tables t on n.nspname = t.table_schema and c.relname = t.table_name
+where n.nspname not in ('pg_catalog', 'information_schema','pg_temp_1','pg_toast','pg_toast_temp_1') and n.nspname in
+('$connectProperties.schema_name$')
+),
+tmp2 as (
+select distinct c.table_schema , c.table_name, t.tableowner, t.tablespace from pg_tables t left join information_schema.columns c on t.schemaname=c.table_schema and  t.tablename =c.table_name
+where
+c.table_schema in ('$connectProperties.schema_name$')
+)
+
+select
+$connectProperties.datastore_id$ as datastore_id,
+cast($connectProperties.component_id$ as int) as component_id,
+'$connectProperties.host$' as hostname,
+'$connectProperties.instance_name$' as instance_name,
+'$connectProperties.schema_name$' as schema_name,
+t1.table_name,
+t2.tableowner as table_owner,
+null as status,
+t1.row_count as estimated_rows,
+null as num_columns ,
+t1.inserts,
+t1.updates,
+t1.deletes,
+null as create_table_ts,
+null as modified_table_ts,
+t1.table_size,
+'source' as table_layer,
+null as location_path,
+t2.tablespace as tablespace_name,
+case when t1.table_type = 'BASE TABLE' then 'T' else 'V' end as table_type,
+(select connection_template from kosh.connection_profile where connection_profile_id=2) as table_format,
+false as is_encrypted,
+false as is_compressed,
+null as table_type_owner,
+null as query
+from tmp1 t1 join tmp2 t2 on t1.schemaname = t2.table_schema and t1.table_name = t2.table_name
+>>
+
+query_all_tables_cols(connectProperties) ::= <<
+with tmp as (
+select tableowner, tablename, schemaname from pg_tables 
+)
+SELECT   $connectProperties.datastore_id$ as datastore_id,
+         $connectProperties.component_id$ as component_id,
+         '$connectProperties.instance_name$' as instance_name,
+         a.table_schema as schema_name,
+         b.tableowner as table_owner,
+         a.table_name,
+         a.column_name,
+         a.data_type as column_datatype,
+         null as data_length,
+         a. numeric_precision as data_precision,
+         a.numeric_scale as data_scale,
+         case 
+              when a.is_nullable='YES' then 'Y' 
+              else 'N' 
+         end as is_nullable,
+         a. ordinal_position,
+         null as num_distinct,
+         null as low_value,
+         null as high_value,
+         null as num_nulls,
+         null as avg_col_length
+FROM     information_schema.columns a,
+         tmp b
+WHERE    table_schema in ('$connectProperties.schema_name$')
+AND      a.table_schema =b.schemaname
+AND      a.table_name=b.tablename
+>>
+
+query_dba_indexes(connectProperties) ::= <<
+with tmp1 as(
+select
+    t.relname as table_name,
+    i.relname as index_name,
+    a.attname as column_name,
+    tab.tableowner as table_owner
+from
+    pg_class t,
+    pg_class i,
+    pg_index ix,
+    pg_tables tab,
+    pg_attribute a
+where
+    t.oid = ix.indrelid
+    and i.oid = ix.indexrelid
+    and a.attrelid = t.oid
+    and a.attnum = ANY(ix.indkey)
+    and t.relname = tab.tablename
+    and t.relkind = 'r'
+order by
+    t.relname,
+    i.relname
+)
+
+SELECT   $connectProperties.datastore_id$ as datastore_id,
+         $connectProperties.component_id$ as component_id,
+         '$connectProperties.instance_name$' as instance_name,
+         '$connectProperties.schema_name$' as schema_name,
+          t1.table_owner,
+         t2.table_name,
+         t2.column_name,
+         t1.index_name,
+         t2.ordinal_position,
+         null as sort_order
+FROM     tmp1 t1
+         join information_schema.columns t2 on t2.table_name = t1.table_name and t2.column_name=t1.column_name
+WHERE    t2.table_schema in ('$connectProperties.schema_name$');
+>>
+
+query_dba_privileges(connectProperties) ::= <<
+Select
+         $connectProperties.datastore_id$ as datastore_id,
+         $connectProperties.component_id$ as component_id,
+         '$connectProperties.instance_name$' as instance_name,
+         '$connectProperties.schema_name$' as schema_name,
+         table_name,
+         grantee,
+         grantor,
+         privilege_type,
+         case when is_grantable='YES' then true else false end as is_grantable
+from information_schema.table_privileges
+where table_schema in ('$connectProperties.schema_name$')
+>>
