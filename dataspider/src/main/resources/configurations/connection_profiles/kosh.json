@@ -1,5 +1,5 @@
 {
-  "name": "kosh_dev",
+  "name": "kosh_tutorials",
   "type": "postgresql",
   "description": "This is Postgres Connection profile",
   "jdbc_driver": "org.postgresql.Driver",
